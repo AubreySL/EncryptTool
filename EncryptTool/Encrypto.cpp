@@ -53,22 +53,23 @@ BOOL AesDecrypt(BYTE* pPassword, BYTE* pData, DWORD& dwDataLength, DWORD dwBuffe
 	return bRet;
 }
 
+
 //int main(int argc, char* argv[])
 //{
-//	BYTE pData[MAX_PATH] = { 0 };
-//	DWORD dwDataLength = 0;
-//	char* Msg = (char*)"hello lyshark";
+//	byte pdata[MAX_PATH] = { 0 };
+//	DWORD dwdatalength = 0;
+//	char* msg = (char*)"hello lyshark";
 //
-//	strcpy((char*)pData, Msg);
-//	dwDataLength = 1 + ::strlen((char*)pData);
+//	strcpy((char*)pdata, msg);
+//	dwdatalength = 1 + ::strlen((char*)pdata);
 //
-//	// AES 加密
-//	AesEncrypt((BYTE*)"123", pData, dwDataLength, MAX_PATH);
-//	printf("AES 加密长度: %d 加密后: %s \n", dwDataLength, pData);
+//	// aes 加密
+//	AesEncrypt((byte*)"123", pdata, dwdatalength, MAX_PATH);
+//	printf("aes 加密长度: %d 加密后: %s \n", dwdatalength, pdata);
 //
-//	// AES 解密
-//	AesDecrypt((BYTE*)"123", pData, dwDataLength, MAX_PATH);
-//	printf("AES 解密长度: %d 解密后: %s \n", dwDataLength, pData);
+//	// aes 解密
+//	AesDecrypt((byte*)"123", pdata, dwdatalength, MAX_PATH);
+//	printf("aes 解密长度: %d 解密后: %s \n", dwdatalength, pdata);
 //
 //	system("pause");
 //	return 0;

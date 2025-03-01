@@ -8,14 +8,21 @@
 #include "windowsx.h"
 #include "Base64.h"
 
+
 #define MAX_LOADSTRING 100
+
+#pragma comment(lib, "Comctl32.lib")
+
 LPCWSTR char_to_lpcwstr(const char* cstr);
 char* tchar_to_char(const TCHAR* tchar);
-
+LRESULT CALLBACK EditTextProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK EditTextDecryptProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // 全局变量:
 HINSTANCE hInst;                                // 当前实例
 WCHAR szTitle[MAX_LOADSTRING];                  // 标题栏文本
 WCHAR szWindowClass[MAX_LOADSTRING];            // 主窗口类名
+WNDPROC OldTextProc;
+WNDPROC OldTextDecodeProc;
 
 #define IDC_MY_EDIT_ONE 10  //编辑框的ID 自己定义即可.
 #define IDC_MY_EDIT_TWO 11 
@@ -23,6 +30,7 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // 主窗口类名
 
 #define IDC_MY_BUTTON_ONE 13
 #define IDC_MY_BUTTON_TWO 14
+#define IDC_STATUS_BAR 15
 // 此代码模块中包含的函数的前向声明:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -146,7 +154,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     static HWND hwndEditTransformed;
     static HWND hwndButton;
     static HWND hwndButtonDecrypt;
-    TCHAR lpszLatin[] = L"Please input contents.";
+    static HWND hwndStatusBar;
+    static int cxClient;        // 客户区宽度
+    static int cyClient;        // 客户区高度
+
+    TCHAR lpszLatin[] = TEXT("Please input contents.");
     //获得父窗口的客服区坐标
     RECT rcParent;
     GetClientRect(hWnd, &rcParent);
@@ -184,13 +196,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             (HMENU)IDC_MY_EDIT_TWO, // edit control ID 
             (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
             NULL);        // pointer not needed 
+        RECT rcKey;
+        GetWindowRect(hwndEditKey, &rcKey);
         //encrypt button
         hwndButton = CreateWindowEx(
             0,
             L"BUTTON",  // Predefined class; Unicode assumed 
             L"加密",      // Button text 
             WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
-            rcEdit.right / 3,         // x position 
+            rcKey.right+10,         // x position 
             rcEdit.bottom - rcEdit.top + 20,         // y position 
             100,        // Button width
             40,        // Button height
@@ -223,12 +237,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             (HMENU)IDC_MY_EDIT_THREE,   // edit control ID 
             (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
             NULL);        // pointer not needed 
-
+        //create status bar
+        hwndStatusBar = CreateWindowEx(0,TEXT("msctls_statusbar32"),
+            NULL,
+            WS_CHILD | WS_VISIBLE,
+            0,0,0,0,
+            hWnd,
+            (HMENU)IDC_STATUS_BAR,   // edit control ID 
+            (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
+            NULL
+            );
         //for test data
+        SendMessage(hwndStatusBar, SB_SETTEXT, MAKEWORD(0, 0), (LPARAM)TEXT("Ready!"));
         SetDlgItemText(hWnd, IDC_MY_EDIT_ONE, TEXT("hello world!"));
         SetDlgItemText(hWnd, IDC_MY_EDIT_TWO, TEXT("qwe"));
         //SetDlgItemText(hWnd, IDC_MY_EDIT_THREE, TEXT("MTZARG42Nzl0Z2VBcm4rSTVYa1BpQkdMQT09"));
-       
+        
         return 0;
     case WM_COMMAND:
         {
@@ -276,6 +300,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
                 size_t keyLength = (str2Length + 1) * sizeof(TCHAR);
                 str2 = (TCHAR*)malloc(keyLength);
+
               
                 GetDlgItemText(hWnd, IDC_MY_EDIT_TWO, str2, keyLength);
                 //MessageBox(hWnd,str2, TEXT("密钥内容："), MB_OK);
@@ -310,6 +335,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 LPCWSTR text_result = char_to_lpcwstr(second_encode_result.c_str());
                 //MessageBox(hWnd, text_result, TEXT("加密后:"), NULL);
                 SetDlgItemText(hWnd, IDC_MY_EDIT_THREE, text_result);
+                SendMessage(hwndStatusBar, SB_SETTEXT, MAKEWORD(0, 0), (LPARAM)TEXT("加密完成"));
                 // 使用完后删除分配的内存
                 free(str);
                 str = NULL;
@@ -332,6 +358,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 TCHAR* str2 = NULL;
 
                 BYTE pData[MAX_PATH] = { 0 };
+
                 DWORD dwDataLength = 0;
                
                 int strLength = Edit_GetTextLength(hwndEditTransformed);
@@ -398,6 +425,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 LPCWSTR result = char_to_lpcwstr(temp.c_str());
                 //MessageBox(hWnd, result, NULL, NULL);
                 SetDlgItemText(hWnd, IDC_MY_EDIT_ONE, result);
+                SendMessage(hwndStatusBar, SB_SETTEXT, MAKEWORD(0, 0), (LPARAM)TEXT("解密完成"));
                 // 使用完后删除分配的内存
                 free(str);
                 str = NULL;
@@ -424,12 +452,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
+    case WM_SIZE: {
+        cxClient = LOWORD(lParam);
+        cyClient = HIWORD(lParam);
+        MoveWindow(hwndEditContent, 10, 10, cxClient - 20, (cyClient) / 3, TRUE);
+        //save previous proc
+        OldTextProc = (WNDPROC)SetWindowLongPtr(hwndEditContent, GWLP_WNDPROC,(LONG_PTR) EditTextProc);
+        RECT rcEdit;
+        GetWindowRect(hwndEditContent, &rcEdit);
+        MoveWindow(hwndEditKey, 10, rcEdit.bottom - rcEdit.top + 20, 300, 40, TRUE);
+
+        RECT rcKey;
+        GetWindowRect(hwndEditKey, &rcKey);
+        MoveWindow(hwndButton, rcKey.right, rcEdit.bottom - rcEdit.top + 20, 100, 40, TRUE);
+        RECT rcEncryBtn;
+        GetWindowRect(hwndButton, &rcEncryBtn);
+        MoveWindow(hwndButtonDecrypt, rcEncryBtn.right, rcEdit.bottom - rcEdit.top + 20, 100, 40, TRUE);
+
+        MoveWindow(hwndEditTransformed, 10, rcEdit.bottom - rcEdit.top + 70, cxClient - 20, (cyClient) / 3, TRUE);
+        //save previous proc
+        OldTextDecodeProc = (WNDPROC) SetWindowLongPtr(hwndEditTransformed, GWLP_WNDPROC, (LONG_PTR) EditTextDecryptProc);
+
+        SendMessage(hwndStatusBar, WM_SIZE, 0, 0);
+
+
+        break;
+    }
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
 }
-
+ 
 // “关于”框的消息处理程序。
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -474,6 +528,34 @@ LPCWSTR char_to_lpcwstr(const char* cstr) {
     return buffer;
 }
 
+LRESULT CALLBACK EditTextProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+        case WM_KEYDOWN:
+        {
+             //A: 0x41 229:chinese code
+            if ((wParam == 0x41 || wParam == 229) && GetKeyState(VK_CONTROL) < 0) {
+                SendMessage(hWnd, EM_SETSEL, 0, -1);
+                SendMessage(hWnd, WM_COPY, 0, 0);
+            }
+            return 0;
+        }
+    }   
 
+    return CallWindowProc(OldTextProc, hWnd, msg, wParam, lParam);
+}
 
+LRESULT CALLBACK EditTextDecryptProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+        case WM_KEYDOWN:
+        {
+            if ((wParam == 0x41 || wParam == 229) && GetKeyState(VK_CONTROL) < 0) {
+                SendMessage(hWnd, EM_SETSEL, 0, -1);
+                SendMessage(hWnd, WM_COPY, 0, 0);
+            }
+            return 0;
+        }
+    } 
+
+    return CallWindowProc(OldTextDecodeProc, hWnd, msg, wParam, lParam);
+}
 
