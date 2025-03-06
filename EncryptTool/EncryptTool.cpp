@@ -164,10 +164,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     GetClientRect(hWnd, &rcParent);
     INT parentWindowWidth = rcParent.right - rcParent.left;
     INT parentWindowHeight = rcParent.bottom - rcParent.top;
-
-
+    INT inputComHeight = (parentWindowHeight - 20 - 80) / 2 ;//20: margin 70:
     switch (message)
     {
+    
     case WM_CREATE:
        
         //original text
@@ -176,7 +176,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             NULL,         // no window title 
             WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_BORDER |
             ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL,
-            10, 10, parentWindowWidth - 20, (parentWindowHeight) / 3,   // set size in WM_SIZE message 
+            10, 10, parentWindowWidth - 20, inputComHeight,   // set size in WM_SIZE message 
             hWnd,         // parent window 
             (HMENU)IDC_MY_EDIT_ONE,   // edit control ID 
             (HINSTANCE)GetWindowLongPtrW(hWnd, GWLP_HINSTANCE),
@@ -232,7 +232,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             NULL,         // no window title 
             WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_BORDER |
             ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL,
-            10, rcEdit.bottom - rcEdit.top + 70, parentWindowWidth - 20, (parentWindowHeight) / 3,   // set size in WM_SIZE message 
+            10, rcEdit.bottom - rcEdit.top + 70, parentWindowWidth - 20, inputComHeight,   // set size in WM_SIZE message 
             hWnd,         // parent window 
             (HMENU)IDC_MY_EDIT_THREE,   // edit control ID 
             (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
@@ -247,12 +247,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
             NULL
             );
-        //for test data
+
         SendMessage(hwndStatusBar, SB_SETTEXT, MAKEWORD(0, 0), (LPARAM)TEXT("Ready!"));
-        SetDlgItemText(hWnd, IDC_MY_EDIT_ONE, TEXT("hello world!"));
-        SetDlgItemText(hWnd, IDC_MY_EDIT_TWO, TEXT("qwe"));
+
+        //for test data - start
+        //SetDlgItemText(hWnd, IDC_MY_EDIT_ONE, TEXT("hello world!"));
+        //SetDlgItemText(hWnd, IDC_MY_EDIT_TWO, TEXT("qwe"));
         //SetDlgItemText(hWnd, IDC_MY_EDIT_THREE, TEXT("MTZARG42Nzl0Z2VBcm4rSTVYa1BpQkdMQT09"));
-        
+        //for test data - end
+        // 
+         //save previous proc
+        OldTextProc = (WNDPROC)SetWindowLongPtr(hwndEditContent, GWLP_WNDPROC, (LONG_PTR)EditTextProc);
+        OldTextDecodeProc = (WNDPROC)SetWindowLongPtr(hwndEditTransformed, GWLP_WNDPROC, (LONG_PTR)EditTextDecryptProc);
+
         return 0;
     case WM_COMMAND:
         {
@@ -450,14 +457,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
     case WM_DESTROY:
+        // Remove the subclass from the edit control. 
+        SetWindowLong(hwndEditContent, GWLP_WNDPROC, (LONG_PTR)OldTextProc);
+        SetWindowLong(hwndEditTransformed, GWLP_WNDPROC, (LONG_PTR)OldTextDecodeProc);
         PostQuitMessage(0);
         break;
     case WM_SIZE: {
         cxClient = LOWORD(lParam);
         cyClient = HIWORD(lParam);
-        MoveWindow(hwndEditContent, 10, 10, cxClient - 20, (cyClient) / 3, TRUE);
-        //save previous proc
-        OldTextProc = (WNDPROC)SetWindowLongPtr(hwndEditContent, GWLP_WNDPROC,(LONG_PTR) EditTextProc);
+        MoveWindow(hwndEditContent, 10, 10, cxClient - 20, inputComHeight, TRUE);
+
         RECT rcEdit;
         GetWindowRect(hwndEditContent, &rcEdit);
         MoveWindow(hwndEditKey, 10, rcEdit.bottom - rcEdit.top + 20, 300, 40, TRUE);
@@ -469,9 +478,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         GetWindowRect(hwndButton, &rcEncryBtn);
         MoveWindow(hwndButtonDecrypt, rcEncryBtn.right, rcEdit.bottom - rcEdit.top + 20, 100, 40, TRUE);
 
-        MoveWindow(hwndEditTransformed, 10, rcEdit.bottom - rcEdit.top + 70, cxClient - 20, (cyClient) / 3, TRUE);
-        //save previous proc
-        OldTextDecodeProc = (WNDPROC) SetWindowLongPtr(hwndEditTransformed, GWLP_WNDPROC, (LONG_PTR) EditTextDecryptProc);
+        MoveWindow(hwndEditTransformed, 10, rcEdit.bottom - rcEdit.top + 70, cxClient - 20, inputComHeight, TRUE);
 
         SendMessage(hwndStatusBar, WM_SIZE, 0, 0);
 
@@ -535,13 +542,15 @@ LRESULT CALLBACK EditTextProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
              //A: 0x41 229:chinese code
             if ((wParam == 0x41 || wParam == 229) && GetKeyState(VK_CONTROL) < 0) {
                 SendMessage(hWnd, EM_SETSEL, 0, -1);
+            }
+            if ((wParam == 0x43 || wParam == 229) && GetKeyState(VK_CONTROL) < 0) {
                 SendMessage(hWnd, WM_COPY, 0, 0);
             }
             return 0;
         }
     }   
 
-    return CallWindowProc(OldTextProc, hWnd, msg, wParam, lParam);
+    return CallWindowProc(OldTextProc, hWnd, msg, wParam, lParam); 
 }
 
 LRESULT CALLBACK EditTextDecryptProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -550,6 +559,8 @@ LRESULT CALLBACK EditTextDecryptProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
         {
             if ((wParam == 0x41 || wParam == 229) && GetKeyState(VK_CONTROL) < 0) {
                 SendMessage(hWnd, EM_SETSEL, 0, -1);
+            }
+            if ((wParam == 0x43 || wParam == 229) && GetKeyState(VK_CONTROL) < 0) {
                 SendMessage(hWnd, WM_COPY, 0, 0);
             }
             return 0;
